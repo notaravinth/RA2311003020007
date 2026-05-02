@@ -25,37 +25,13 @@ app.get('/notifications/fetch', async (req, res) => {
   }
 });
 
-// Compute a score for notifications combining type weight and recency
-function computeScore(n) {
-  const type = (n.Type || '').toLowerCase();
-  const weightMap = { placement: 3, result: 2, event: 1 };
-  const weight = weightMap[type] || 0;
-
-  // Parse timestamp; fallback to 0
-  let ts = 0;
-  try {
-    // Expecting format like "2026-04-22 17:51:30"
-    ts = new Date((n.Timestamp || '').replace(' ', 'T')).getTime() || 0;
-  } catch (e) {
-    ts = 0;
-  }
-
-  // Make weight dominant but keep recency to break ties
-  return weight * 1e14 + ts;
-}
+const { getTop10 } = require('./top10');
 
 // Return top-10 prioritized notifications (by type weight and recency)
 app.get('/notifications/top10', async (req, res) => {
   try {
     await Log('backend', 'info', 'service', 'computing top-10 notifications');
-    const upstream = await axios.get('http://20.207.122.201/evaluation-service/notifications', { timeout: 5000 });
-    const list = Array.isArray(upstream.data.notifications) ? upstream.data.notifications : [];
-
-    const ranked = list
-      .map(n => ({ n, score: computeScore(n) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10)
-      .map(x => x.n);
+    const ranked = await getTop10('http://20.207.122.201/evaluation-service/notifications');
 
     await Log('backend', 'debug', 'service', `top-10 computed, returning ${ranked.length}`);
     res.json({ top10: ranked });

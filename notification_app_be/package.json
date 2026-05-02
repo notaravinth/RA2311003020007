@@ -8,5 +8,12 @@
   "dependencies": {
     "express": "^4.18.2",
     "axios": "^1.4.0"
+  },
+  "devDependencies": {
+    "axios-mock-adapter": "^1.21.2"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/test_top10.js"
   }
 }
