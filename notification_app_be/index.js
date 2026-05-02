@@ -31,13 +31,15 @@ const { getTop10 } = require('./top10');
 app.get('/notifications/top10', async (req, res) => {
   try {
     await Log('backend', 'info', 'service', 'computing top-10 notifications');
-    const ranked = await getTop10('http://20.207.122.201/evaluation-service/notifications');
+    const authHeader = req.headers.authorization;
+    const ranked = await getTop10('http://20.207.122.201/evaluation-service/notifications', authHeader);
 
     await Log('backend', 'debug', 'service', `top-10 computed, returning ${ranked.length}`);
     res.json({ top10: ranked });
   } catch (err) {
+    console.error('top10 error:', err.message, err.response?.status, err.code);
     await Log('backend', 'error', 'service', `failed compute top10: ${err.message}`);
-    res.status(502).json({ error: 'failed to compute top10' });
+    res.status(502).json({ error: 'failed to compute top10', details: err.message });
   }
 });
 

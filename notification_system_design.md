@@ -47,6 +47,7 @@ npm test
 ---
 
 This file documents the Stage 1 approach implemented in this repository. The code files to review:
+
 - `notification_app_be/top10.js` — scoring and `getTop10()` implementation
 - `notification_app_be/index.js` — endpoint wiring and logging calls
 - `logging/index.js` — reusable `Log()` function that posts to the evaluation logging API
