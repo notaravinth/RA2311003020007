@@ -63,11 +63,13 @@ The application now needs a responsive, production-ready frontend that displays 
 ### Backend API Enhancements
 
 The `/api/notifications` endpoint now supports the following query parameters:
+
 - `limit` (default: 20, max: 100) — number of results per page
 - `page` (default: 1) — pagination page number
 - `notification_type` (optional) — filter by "event", "result", or "placement"
 
 Response format:
+
 ```json
 {
   "notifications": [...],
@@ -83,11 +85,13 @@ All notifications are ranked by the same scoring algorithm: `weight * 1e14 + tim
 ### Frontend Implementation
 
 **Technology Stack:**
+
 - React 18 with Material-UI (MUI) for styling
 - Clean, responsive design suitable for desktop and mobile
 - No ShadCN or external CSS libraries — Material-UI only
 
 **Key Features:**
+
 - Display all notifications in a card-based grid layout
 - Filter notifications by type (Placement, Result, Event)
 - Mark notifications as read/unread locally (client-side state)
@@ -98,6 +102,7 @@ All notifications are ranked by the same scoring algorithm: `weight * 1e14 + tim
 - Real-time stats showing total and filtered notification count
 
 **Read Status:**
+
 - Implemented as client-side state (not persisted to server)
 - Each notification can be toggled between read/unread
 - Visual indicators: unread notifications show a blue border and "New" badge
@@ -169,16 +174,19 @@ npm test
 ## API Usage Examples
 
 **Fetch all notifications, paginated:**
+
 ```bash
 curl "http://localhost:3000/api/notifications?limit=10&page=1"
 ```
 
 **Filter by placement notifications:**
+
 ```bash
 curl "http://localhost:3000/api/notifications?notification_type=placement&limit=5"
 ```
 
 **Fetch results with pagination:**
+
 ```bash
 curl "http://localhost:3000/api/notifications?notification_type=result&page=2&limit=20"
 ```
