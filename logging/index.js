@@ -43,10 +43,10 @@ async function Log(stack, level, pkg, message) {
     const res = await axios.post(EVAL_LOG_URL, payload, { timeout: 5000 });
     return res.data;
   } catch (err) {
-    // Surface useful error for callers; preserve original error
-    const e = new Error('failed to send log: ' + (err && err.message));
-    e.original = err;
-    throw e;
+    return {
+      message: 'log request failed',
+      error: err && err.message ? err.message : 'unknown error'
+    };
   }
 }
 
