@@ -1,95 +1,252 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './styles.css';
+import {
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+  Container,
+  Paper,
+  Grid,
+  TextField,
+  Button,
+  Typography,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Box,
+  Pagination,
+  Stack,
+  CircularProgress,
+  Alert,
+  FormControlLabel,
+  Switch,
+} from '@mui/material';
+import {
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+  FilterList as FilterListIcon,
+} from '@mui/icons-material';
 
-function formatTimestamp(value) {
-  if (!value) return 'Unknown time';
-  const parsed = new Date(String(value).replace(' ', 'T'));
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
-}
+const theme = createTheme({
+  palette: {
+    primary: { main: '#1976d2' },
+    secondary: { main: '#dc004e' },
+    success: { main: '#4caf50' },
+    warning: { main: '#ff9800' },
+    error: { main: '#f44336' },
+    background: { default: '#f5f5f5', paper: '#ffffff' },
+  },
+  typography: { fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif' },
+});
 
-function Badge({ type }) {
-  const label = String(type || 'unknown');
-  return <span className={`badge badge-${label.toLowerCase()}`}>{label}</span>;
-}
+const typeColors = {
+  placement: { bg: '#e8f5e9', text: '#2e7d32', label: 'Placement' },
+  result: { bg: '#e3f2fd', text: '#1565c0', label: 'Result' },
+  event: { bg: '#fff3e0', text: '#e65100', label: 'Event' },
+};
 
 function App() {
-  const [items, setItems] = React.useState([]);
+  const [notifications, setNotifications] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [limit] = React.useState(10);
+  const [total, setTotal] = React.useState(0);
+  const [pages, setPages] = React.useState(0);
+  const [filterType, setFilterType] = React.useState('');
+  const [showUnreadOnly, setShowUnreadOnly] = React.useState(false);
+  const [readStatus, setReadStatus] = React.useState({});
+
+  const fetchData = React.useCallback(async (pageNum = 1, type = '') => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({ limit, page: pageNum });
+      if (type) params.append('notification_type', type);
+      const response = await fetch(`/api/notifications?${params}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+      setTotal(data.total);
+      setPages(data.pages);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Failed to load notifications');
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [limit]);
 
   React.useEffect(() => {
-    let mounted = true;
+    fetchData(page, filterType);
+  }, [page, filterType, fetchData]);
 
-    async function loadTop10() {
-      try {
-        const response = await fetch('/api/notifications/top10');
-        if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}`);
-        }
-        const data = await response.json();
-        if (mounted) {
-          setItems(Array.isArray(data.top10) ? data.top10 : []);
-          setError('');
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err.message || 'Failed to load notifications');
-          setItems([]);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
+  const toggleRead = (id) => {
+    setReadStatus(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-    loadTop10();
+  const handleFilterChange = (type) => {
+    setFilterType(type);
+    setPage(1);
+  };
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const displayedNotifications = showUnreadOnly
+    ? notifications.filter(n => !readStatus[n.ID])
+    : notifications;
 
   return (
-    <main className="app-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Stage 1</p>
-          <h1>Priority Inbox</h1>
-          <p className="subtitle">React frontend with vanilla CSS showing the top 10 notifications by importance and recency.</p>
-        </div>
-        <div className="hero-card">
-          <span className="hero-card-label">Source</span>
-          <strong>GET /api/notifications/top10</strong>
-        </div>
-      </section>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5', py: 4 }}>
+        <Container maxWidth="lg">
+          {/* Header */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+              Notifications
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
+              Manage all your campus notifications and filter by type or status
+            </Typography>
+          </Box>
 
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Top 10 Notifications</h2>
-          <span className="count">{loading ? 'Loading...' : `${items.length} items`}</span>
-        </div>
+          {/* Filters */}
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <FilterListIcon sx={{ color: 'action.active' }} />
+              <Button
+                variant={filterType === '' ? 'contained' : 'outlined'}
+                onClick={() => handleFilterChange('')}
+              >
+                All
+              </Button>
+              <Button
+                variant={filterType === 'placement' ? 'contained' : 'outlined'}
+                onClick={() => handleFilterChange('placement')}
+              >
+                Placements
+              </Button>
+              <Button
+                variant={filterType === 'result' ? 'contained' : 'outlined'}
+                onClick={() => handleFilterChange('result')}
+              >
+                Results
+              </Button>
+              <Button
+                variant={filterType === 'event' ? 'contained' : 'outlined'}
+                onClick={() => handleFilterChange('event')}
+              >
+                Events
+              </Button>
+              <Box sx={{ flexGrow: 1 }} />
+              <FormControlLabel
+                control={<Switch checked={showUnreadOnly} onChange={(e) => setShowUnreadOnly(e.target.checked)} />}
+                label="Unread Only"
+              />
+            </Box>
+          </Paper>
 
-        {error ? <div className="error-box">{error}</div> : null}
+          {/* Loading */}
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          )}
 
-        {!loading && !error && items.length === 0 ? (
-          <div className="empty-state">No notifications returned from the API.</div>
-        ) : null}
+          {/* Error */}
+          {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-        <div className="grid">
-          {items.map((item, index) => (
-            <article key={item.ID || `${item.Type}-${index}`} className="card">
-              <div className="card-top">
-                <span className="rank">#{index + 1}</span>
-                <Badge type={item.Type} />
-              </div>
-              <h3>{item.Message || 'No message'}</h3>
-              <p className="meta">ID: {item.ID || 'unknown'}</p>
-              <p className="meta">Time: {formatTimestamp(item.Timestamp)}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </main>
+          {/* Notifications Grid */}
+          {!loading && displayedNotifications.length > 0 && (
+            <>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                {displayedNotifications.map((notif) => {
+                  const typeKey = (notif.Type || 'unknown').toLowerCase();
+                  const colors = typeColors[typeKey] || { bg: '#eceff1', text: '#424242', label: notif.Type };
+                  const isRead = readStatus[notif.ID];
+
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={notif.ID}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          opacity: isRead ? 0.7 : 1,
+                          transition: 'all 0.2s',
+                          border: isRead ? 'none' : `2px solid ${colors.text}`,
+                          '&:hover': { boxShadow: 6 },
+                        }}
+                      >
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
+                            <Chip
+                              label={colors.label}
+                              size="small"
+                              sx={{ backgroundColor: colors.bg, color: colors.text, fontWeight: 600 }}
+                            />
+                            {!isRead && (
+                              <Chip label="New" size="small" color="primary" variant="outlined" />
+                            )}
+                          </Box>
+                          <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, lineHeight: 1.4 }}>
+                            {notif.Message || 'No message'}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+                            {notif.Timestamp || 'Unknown time'}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            ID: {notif.ID?.slice(0, 12)}...
+                          </Typography>
+                        </CardContent>
+                        <CardActions sx={{ pt: 0 }}>
+                          <Button
+                            size="small"
+                            startIcon={isRead ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                            onClick={() => toggleRead(notif.ID)}
+                          >
+                            {isRead ? 'Mark Unread' : 'Mark Read'}
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+
+              {/* Pagination */}
+              {pages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                  <Pagination
+                    count={pages}
+                    page={page}
+                    onChange={(e, value) => setPage(value)}
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </>
+          )}
+
+          {/* Empty State */}
+          {!loading && displayedNotifications.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="textSecondary">
+                {showUnreadOnly ? 'No unread notifications' : 'No notifications found'}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Stats */}
+          <Paper sx={{ p: 2, mt: 4, backgroundColor: '#f0f0f0' }}>
+            <Typography variant="body2" color="textSecondary">
+              Showing {displayedNotifications.length} of {total} notifications
+              {filterType && ` (filtered by ${filterType})`}
+            </Typography>
+          </Paper>
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 }
 

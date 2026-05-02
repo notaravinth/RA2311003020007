@@ -1,11 +1,13 @@
 const express = require('express');
 const axios = require('axios');
+const path = require('path');
 const { Log } = require('../logging');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../notification_app_fe/dist')));
 
 app.get('/', async (req, res) => {
   await Log('backend', 'info', 'controller', 'received health check');
@@ -25,7 +27,7 @@ app.get('/notifications/fetch', async (req, res) => {
   }
 });
 
-const { getTop10 } = require('./top10');
+const { getTop10, getNotifications } = require('./top10');
 
 // Return top-10 prioritized notifications (by type weight and recency)
 app.get('/notifications/top10', async (req, res) => {
@@ -41,6 +43,36 @@ app.get('/notifications/top10', async (req, res) => {
     await Log('backend', 'error', 'service', `failed compute top10: ${err.message}`);
     res.status(502).json({ error: 'failed to compute top10', details: err.message });
   }
+});
+
+// New API endpoint: all notifications with filtering and pagination
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const notification_type = req.query.notification_type || null;
+
+    await Log('backend', 'info', 'service', `fetching notifications: limit=${limit}, page=${page}, type=${notification_type || 'all'}`);
+
+    const authHeader = req.headers.authorization;
+    const result = await getNotifications(
+      'http://20.207.122.201/evaluation-service/notifications',
+      authHeader,
+      { limit, page, notification_type }
+    );
+
+    await Log('backend', 'debug', 'service', `returned ${result.notifications.length} of ${result.total}`);
+    res.json(result);
+  } catch (err) {
+    console.error('notifications api error:', err.message, err.response?.status, err.code);
+    await Log('backend', 'error', 'service', `notifications api failed: ${err.message}`);
+    res.status(502).json({ error: 'failed to fetch notifications', details: err.message });
+  }
+});
+
+// SPA fallback: serve index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../notification_app_fe/dist/index.html'));
 });
 
 app.listen(PORT, async () => {

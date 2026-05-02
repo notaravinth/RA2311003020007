@@ -57,4 +57,30 @@ async function getTop10(upstreamUrl, authHeader) {
   return ranked;
 }
 
-module.exports = { computeScore, getTop10 };
+async function getNotifications(upstreamUrl, authHeader, options = {}) {
+  const { limit = 20, page = 1, notification_type = null } = options;
+  let list = await fetchNotifications(upstreamUrl, authHeader);
+
+  if (notification_type) {
+    list = list.filter(n => (n.Type || '').toLowerCase() === notification_type.toLowerCase());
+  }
+
+  const ranked = list
+    .map(n => ({ n, score: computeScore(n) }))
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.n);
+
+  const start = (page - 1) * limit;
+  const end = start + limit;
+  const paginated = ranked.slice(start, end);
+
+  return {
+    notifications: paginated,
+    total: ranked.length,
+    page,
+    limit,
+    pages: Math.ceil(ranked.length / limit)
+  };
+}
+
+module.exports = { computeScore, getTop10, getNotifications };
